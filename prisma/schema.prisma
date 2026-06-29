@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PILGRIM
+  ADMIN
+}
+
+enum ParikramaStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  role      Role     @default(PILGRIM)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pilgrim Pilgrim?
+  otpLogs OtpLog[]
+}
+
+model OtpLog {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+model Pilgrim {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  fullName   String
+  fullNameHi String?
+  gender     String
+  dob        DateTime
+  gotra      String?
+  mobile     String
+  pincode    String
+  city       String?
+  state      String?
+  slug       String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  parikramas Parikrama[]
+}
+
+model Parikrama {
+  id            String          @id @default(uuid())
+  pilgrimId     String
+  pilgrim       Pilgrim         @relation(fields: [pilgrimId], references: [id])
+  year          Int             @default(2026)
+  proofPhotoUrl String?
+  status        ParikramaStatus @default(PENDING)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  familyMembers FamilyMember[]
+  certificate   Certificate?
+  inviteLinks   InviteLink[]
+}
+
+model FamilyMember {
+  id          String    @id @default(uuid())
+  parikramaId String
+  parikrama   Parikrama @relation(fields: [parikramaId], references: [id])
+  name        String
+  relation    String
+  mobile      String?
+  createdAt   DateTime  @default(now())
+}
+
+model Certificate {
+  id          String    @id @default(uuid())
+  certId      String    @unique
+  parikramaId String    @unique
+  parikrama   Parikrama @relation(fields: [parikramaId], references: [id])
+  pdfUrl      String?
+  isValid     Boolean   @default(true)
+  issuedAt    DateTime  @default(now())
+}
+
+model InviteLink {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  parikramaId String
+  parikrama   Parikrama @relation(fields: [parikramaId], references: [id])
+  usedCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+}
