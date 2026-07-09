@@ -12,6 +12,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import OtpInput from "@/components/forms/OtpInput";
 
 type FamilyMember = {
   id: number;
@@ -28,7 +29,7 @@ const PINCODE_MOCK: Record<string, { city: string; state: string }> = {
 };
 
 export default function RegisterPage() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1 = personal info, 2 = OTP, 3 = photo & family
   const [copied, setCopied] = useState(false);
 
   // Step 1 state
@@ -42,7 +43,7 @@ export default function RegisterPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
 
-  // Step 2 state
+  // Step 3 state
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [hasFamily, setHasFamily] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
@@ -95,8 +96,8 @@ export default function RegisterPage() {
   }
 
   function handleSubmit() {
-    // Phase 1: mock only, no API call
-    alert("पंजीकरण सफल! (Mock submit — API integration in Phase 2)");
+    // Phase 2 Step 2 will wire this to Prisma. For now still mock.
+    alert("पंजीकरण सफल! (Mock submit — DB wiring in Phase 2 Step 2)");
   }
 
   return (
@@ -124,19 +125,20 @@ export default function RegisterPage() {
       <div className="mx-auto w-full max-w-2xl px-4 pt-6">
         <div className="flex items-center gap-3">
           <StepDot active={step >= 1} label="1" />
-          <div
-            className={`h-1 flex-1 rounded-full ${
-              step >= 2 ? "bg-primary" : "bg-muted"
-            }`}
-          />
+          <div className={`h-1 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
           <StepDot active={step >= 2} label="2" />
+          <div className={`h-1 flex-1 rounded-full ${step >= 3 ? "bg-primary" : "bg-muted"}`} />
+          <StepDot active={step >= 3} label="3" />
         </div>
         <div className="mt-2 flex justify-between text-sm font-medium text-muted-foreground">
           <span className={step === 1 ? "text-secondary" : ""}>
-            व्यक्तिगत जानकारी / Personal Info
+            व्यक्तिगत जानकारी
           </span>
           <span className={step === 2 ? "text-secondary" : ""}>
-            फोटो व परिवार / Photo & Family
+            OTP सत्यापन
+          </span>
+          <span className={step === 3 ? "text-secondary" : ""}>
+            फोटो व परिवार
           </span>
         </div>
       </div>
@@ -243,7 +245,15 @@ export default function RegisterPage() {
 
             <button
               onClick={() => setStep(2)}
-              disabled={!fullName || !hindiName || !gender || !dob || !mobile || !pincode}
+              disabled={
+                !fullName ||
+                !hindiName ||
+                !gender ||
+                !dob ||
+                !mobile ||
+                mobile.length !== 10 ||
+                !pincode
+              }
               className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-lg font-semibold text-primary-foreground shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               आगे बढ़ें / Continue
@@ -253,6 +263,27 @@ export default function RegisterPage() {
         )}
 
         {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-secondary">
+                मोबाइल सत्यापन
+              </h1>
+              <p className="text-muted-foreground">Mobile Verification</p>
+            </div>
+
+            <OtpInput mobile={mobile} onVerified={() => setStep(3)} />
+
+            <button
+              onClick={() => setStep(1)}
+              className="flex items-center justify-center gap-2 rounded-full border-2 border-secondary px-6 py-3 font-semibold text-secondary transition hover:bg-secondary/5"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              वापस / Back
+            </button>
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="space-y-8">
             <div>
               <h1 className="text-2xl font-bold text-secondary">
@@ -401,7 +432,7 @@ export default function RegisterPage() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="flex items-center justify-center gap-2 rounded-full border-2 border-secondary px-6 py-4 font-semibold text-secondary transition hover:bg-secondary/5"
               >
                 <ArrowLeft className="h-5 w-5" />
