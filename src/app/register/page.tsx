@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Waves,
@@ -11,6 +12,7 @@ import {
   Trash2,
   Copy,
   Check,
+  Loader2,
 } from "lucide-react";
 import OtpInput from "@/components/forms/OtpInput";
 
@@ -21,6 +23,8 @@ type FamilyMember = {
   mobile: string;
 };
 
+const YEAR_OPTIONS = [2024, 2025, 2026];
+
 // mock pincode -> city/state lookup
 const PINCODE_MOCK: Record<string, { city: string; state: string }> = {
   "391760": { city: "Kevadia", state: "Gujarat" },
@@ -29,8 +33,11 @@ const PINCODE_MOCK: Record<string, { city: string; state: string }> = {
 };
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1); // 1 = personal info, 2 = OTP, 3 = photo & family
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Step 1 state
   const [fullName, setFullName] = useState("");
@@ -42,6 +49,7 @@ export default function RegisterPage() {
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [year, setYear] = useState(2026);
 
   // Step 3 state
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -95,9 +103,42 @@ export default function RegisterPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function handleSubmit() {
-    // Phase 2 Step 2 will wire this to Prisma. For now still mock.
-    alert("पंजीकरण सफल! (Mock submit — DB wiring in Phase 2 Step 2)");
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          fullNameHi: hindiName,
+          gender,
+          dob,
+          gotra,
+          mobile,
+          pincode,
+          city,
+          state,
+          year,
+          familyMembers: familyMembers.map(({ name, relation, mobile }) => ({
+            name,
+            relation,
+            mobile,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        router.push(`/pilgrim/${data.slug}`);
+      } else {
+        setSubmitError(data.message || "पंजीकरण विफल / Registration failed");
+      }
+    } catch {
+      setSubmitError("नेटवर्क त्रुटि / Network error, please try again");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -204,6 +245,25 @@ export default function RegisterPage() {
                 type="date"
                 className={inputClass}
               />
+            </Field>
+
+            <Field label="परिक्रमा वर्ष" labelEn="Parikrama Year" required>
+              <div className="grid grid-cols-3 gap-3">
+                {YEAR_OPTIONS.map((y) => (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => setYear(y)}
+                    className={`rounded-xl border-2 py-3 text-center font-semibold transition ${
+                      year === y
+                        ? "border-primary bg-primary/10 text-secondary"
+                        : "border-border text-foreground/70"
+                    }`}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <Field label="गोत्र" labelEn="Gotra (optional)">
@@ -320,6 +380,9 @@ export default function RegisterPage() {
                   className="hidden"
                 />
               </label>
+              <p className="mt-2 text-xs text-muted-foreground">
+                नोट: फोटो अभी सर्वर पर सेव नहीं होती (Cloudinary Phase 2 Step 3 में) / Photo isn&apos;t saved to server yet
+              </p>
             </Field>
 
             {/* Family toggle */}
@@ -430,19 +493,32 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {submitError && (
+              <p className="text-sm font-medium text-destructive">{submitError}</p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center justify-center gap-2 rounded-full border-2 border-secondary px-6 py-4 font-semibold text-secondary transition hover:bg-secondary/5"
+                disabled={submitting}
+                className="flex items-center justify-center gap-2 rounded-full border-2 border-secondary px-6 py-4 font-semibold text-secondary transition hover:bg-secondary/5 disabled:opacity-40"
               >
                 <ArrowLeft className="h-5 w-5" />
                 वापस
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-4 text-lg font-semibold text-primary-foreground shadow-md transition hover:opacity-90"
+                disabled={submitting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-4 text-lg font-semibold text-primary-foreground shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                पंजीकरण पूर्ण करें / Submit
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    सबमिट हो रहा है...
+                  </>
+                ) : (
+                  "पंजीकरण पूर्ण करें / Submit"
+                )}
               </button>
             </div>
           </div>

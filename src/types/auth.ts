@@ -1,4 +1,5 @@
 export type SessionPayload = {
+  userId: string;
   phone: string;
   role: "PILGRIM" | "ADMIN";
   verified: boolean;
